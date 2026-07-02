@@ -273,9 +273,9 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId }: Game
 
     return () => {
       // Clean up local listeners when unmounting the game view
-      s.off("gameStateUpdate");
-      s.off("errorMsg");
-      s.off("kicked");
+      s.off("gameStateUpdate", handleStateUpdate);
+      s.off("errorMsg", handleError);
+      s.off("kicked", handleKicked);
     };
   }, [lobbyId, onExit]);
 

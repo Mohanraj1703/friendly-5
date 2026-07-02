@@ -149,7 +149,7 @@ async function startServer() {
     console.log(`New socket connection: ${socket.id}`);
 
     // Create Room
-    socket.on("createRoom", ({ playerName, scoreLimit, maxPlayers, playerId }) => {
+    socket.on("createRoom", ({ playerName, scoreLimit, maxPlayers, playerId }, callback: any) => {
       try {
         const roomId = generateRoomCode();
         const limit = parseInt(scoreLimit, 10) || 100;
@@ -202,25 +202,37 @@ async function startServer() {
         socket.join(roomId);
         
         console.log(`Room created: ${roomId} by player ${playerName}`);
-        socket.emit("roomCreated", { roomId, roomState: sanitizeRoomForPlayer(newRoom, playerId) });
+        const roomState = sanitizeRoomForPlayer(newRoom, playerId);
+        socket.emit("roomCreated", { roomId, roomState });
+        if (callback) {
+          callback({ success: true, roomId, roomState });
+        }
       } catch (err) {
+        console.error('Create room failed:', err);
         socket.emit("errorMsg", "Failed to create room.");
+        if (callback) {
+          callback({ success: false, error: 'Failed to create room.' });
+        }
       }
     });
 
     // Join Room
-    socket.on("joinRoom", ({ roomId, playerName, playerId }) => {
+    socket.on("joinRoom", ({ roomId, playerName, playerId }, callback: any) => {
       try {
         const code = roomId.toUpperCase().trim();
         const room = rooms.get(code);
 
         if (!room) {
+          console.log(`Join failed: room not found ${code} by ${playerName}`);
           socket.emit("errorMsg", "Room not found. Check the code.");
+          if (callback) callback({ success: false, error: 'Room not found.' });
           return;
         }
 
         if (room.players.length >= room.maxPlayers) {
+          console.log(`Join failed: room full ${code} by ${playerName}`);
           socket.emit("errorMsg", "This room is full.");
+          if (callback) callback({ success: false, error: 'This room is full.' });
           return;
         }
 
@@ -251,8 +263,9 @@ async function startServer() {
         }
 
         if (room.status !== 'setup') {
-          // Join as spectator if game is active
+          console.log(`Join failed: game already started ${code} by ${playerName}`);
           socket.emit("errorMsg", "This game has already started. You cannot join now.");
+          if (callback) callback({ success: false, error: 'Game already started.' });
           return;
         }
 
@@ -284,9 +297,13 @@ async function startServer() {
         });
 
         socket.emit("roomJoined", { roomId: code, roomState: sanitizeRoomForPlayer(room, playerId) });
+        if (callback) callback({ success: true, roomId: code, roomState: sanitizeRoomForPlayer(room, playerId) });
+        console.log(`Player joined: ${playerName} into ${code}`);
         broadcastRoomUpdate(room, io);
       } catch (err) {
+        console.error('Join room failed:', err);
         socket.emit("errorMsg", "Failed to join room.");
+        if (callback) callback({ success: false, error: 'Failed to join room.' });
       }
     });
 

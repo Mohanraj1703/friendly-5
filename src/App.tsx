@@ -25,6 +25,7 @@ export default function App() {
 
   const [isRulesOpen, setIsRulesOpen] = useState<boolean>(false);
   const [lobbyId, setLobbyId] = useState<string | null>(null);
+  const [initialLobbyState, setInitialLobbyState] = useState<any | null>(null);
   const [joinCodeInput, setJoinCodeInput] = useState<string>('');
   const [onlineScoreLimit, setOnlineScoreLimit] = useState<number>(100);
   const [onlineMaxPlayers, setOnlineMaxPlayers] = useState<number>(6);
@@ -42,16 +43,18 @@ export default function App() {
   useEffect(() => {
     const socket = getSocket();
 
-    const onRoomCreated = ({ roomId }: { roomId: string }) => {
+    const onRoomCreated = ({ roomId, roomState }: { roomId: string; roomState: any }) => {
       setLobbyId(roomId);
+      setInitialLobbyState(roomState);
       setGameState('lobby');
       setStatusMessage('Room created. Share this room code with your friends to join.');
       setErrorMessage('');
       setIsCreatingRoom(false);
     };
 
-    const onRoomJoined = ({ roomId }: { roomId: string }) => {
+    const onRoomJoined = ({ roomId, roomState }: { roomId: string; roomState: any }) => {
       setLobbyId(roomId);
+      setInitialLobbyState(roomState);
       setGameState('lobby');
       setStatusMessage('Joined room successfully.');
       setErrorMessage('');
@@ -83,7 +86,7 @@ export default function App() {
     setGameState('playing');
   };
 
-  const handleCreateOnlineRoom = (e: React.FormEvent) => {
+  const handleCreateOnlineRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!playerName.trim()) {
       setErrorMessage("Please enter your name first!");
@@ -107,10 +110,24 @@ export default function App() {
     setErrorMessage('');
     setStatusMessage('Creating room...');
     setIsCreatingRoom(true);
-    createRoom(playerName.trim(), scoreLimit, maxPlayers);
+
+    const response = await createRoom(playerName.trim(), scoreLimit, maxPlayers);
+    if (!response.success) {
+      setErrorMessage(response.error || 'Failed to create room.');
+      setStatusMessage('');
+      setIsCreatingRoom(false);
+      return;
+    }
+
+    setLobbyId(response.roomId || null);
+    setInitialLobbyState(response.roomState || null);
+    setGameState('lobby');
+    setStatusMessage('Room created. Share this room code with your friends to join.');
+    setErrorMessage('');
+    setIsCreatingRoom(false);
   };
 
-  const handleJoinOnlineRoom = (e: React.FormEvent) => {
+  const handleJoinOnlineRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!playerName.trim()) {
       setErrorMessage("Please enter your name first!");
@@ -124,11 +141,26 @@ export default function App() {
     setErrorMessage('');
     setStatusMessage('Joining room...');
     setIsJoiningRoom(true);
-    joinRoom(joinCodeInput.trim().toUpperCase(), playerName.trim());
+
+    const response = await joinRoom(joinCodeInput.trim().toUpperCase(), playerName.trim());
+    if (!response.success) {
+      setErrorMessage(response.error || 'Failed to join room.');
+      setStatusMessage('');
+      setIsJoiningRoom(false);
+      return;
+    }
+
+    setLobbyId(response.roomId || null);
+    setInitialLobbyState(response.roomState || null);
+    setGameState('lobby');
+    setStatusMessage('Joined room successfully.');
+    setErrorMessage('');
+    setIsJoiningRoom(false);
   };
 
   const handleExitGame = () => {
     setLobbyId(null);
+    setInitialLobbyState(null);
     setGameState('settings');
   };
 
@@ -348,6 +380,7 @@ export default function App() {
           <MultiplayerLobby
             lobbyId={lobbyId}
             playerName={playerName}
+            initialLobbyState={initialLobbyState}
             onExit={handleExitGame}
             onGameStarted={handleGameStartedMultiplayer}
           />

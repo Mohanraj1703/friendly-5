@@ -27,6 +27,7 @@ import {
 interface MultiplayerLobbyProps {
   lobbyId: string;
   playerName: string;
+  initialLobbyState?: any;
   onExit: () => void;
   onGameStarted: (lobbyId: string) => void;
 }
@@ -34,6 +35,7 @@ interface MultiplayerLobbyProps {
 export default function MultiplayerLobby({ 
   lobbyId, 
   playerName,
+  initialLobbyState,
   onExit, 
   onGameStarted 
 }: MultiplayerLobbyProps) {
@@ -67,14 +69,15 @@ export default function MultiplayerLobby({
     // Establishes/reconnects socket & registers listeners
     const s = connectSocket(handleStateUpdate, handleError, handleKicked);
 
-    // Join room on mount
-    s.emit("joinRoom", { roomId: lobbyId, playerName, playerId: myPlayerId });
+    if (initialLobbyState) {
+      setLobby(initialLobbyState);
+    }
 
     return () => {
       // Do not close socket entirely, just remove specific lobby handlers
-      s.off("gameStateUpdate");
-      s.off("errorMsg");
-      s.off("kicked");
+      s.off("gameStateUpdate", handleStateUpdate);
+      s.off("errorMsg", handleError);
+      s.off("kicked", handleKicked);
     };
   }, [lobbyId, playerName, myPlayerId, onExit, onGameStarted]);
 

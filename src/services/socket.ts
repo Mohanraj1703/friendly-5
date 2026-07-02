@@ -36,25 +36,15 @@ export function connectSocket(
     s.connect();
   }
 
-  // Remove any stale listeners to avoid duplicate trigger bugs
-  s.off("gameStateUpdate");
-  s.off("errorMsg");
-  s.off("kicked");
-  s.off("roomCreated");
-  s.off("roomJoined");
+  // Remove the specific listeners that this component added
+  s.off("gameStateUpdate", onStateUpdate);
+  s.off("errorMsg", onError);
+  s.off("kicked", onKicked);
 
   // Register listeners
-  s.on("gameStateUpdate", (roomState) => {
-    onStateUpdate(roomState);
-  });
-
-  s.on("errorMsg", (message) => {
-    onError(message);
-  });
-
-  s.on("kicked", () => {
-    onKicked();
-  });
+  s.on("gameStateUpdate", onStateUpdate);
+  s.on("errorMsg", onError);
+  s.on("kicked", onKicked);
 
   return s;
 }
@@ -71,14 +61,30 @@ export function createRoom(playerName: string, scoreLimit: number, maxPlayers: n
   const s = getSocket();
   ensureSocketConnected(s);
   const playerId = getOrCreatePlayerId();
-  s.emit("createRoom", { playerName, scoreLimit, maxPlayers, playerId });
+  return new Promise<{ success: boolean; roomId?: string; roomState?: any; error?: string }>((resolve) => {
+    s.emit(
+      "createRoom",
+      { playerName, scoreLimit, maxPlayers, playerId },
+      (response: any) => {
+        resolve(response);
+      }
+    );
+  });
 }
 
 export function joinRoom(roomId: string, playerName: string) {
   const s = getSocket();
   ensureSocketConnected(s);
   const playerId = getOrCreatePlayerId();
-  s.emit("joinRoom", { roomId: roomId.toUpperCase().trim(), playerName, playerId });
+  return new Promise<{ success: boolean; roomId?: string; roomState?: any; error?: string }>((resolve) => {
+    s.emit(
+      "joinRoom",
+      { roomId: roomId.toUpperCase().trim(), playerName, playerId },
+      (response: any) => {
+        resolve(response);
+      }
+    );
+  });
 }
 
 export function toggleReadyStatus(roomId: string) {
