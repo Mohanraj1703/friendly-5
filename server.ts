@@ -500,10 +500,16 @@ async function startServer() {
         drawnCard = room.deck.shift()!;
         room.gameLogs.unshift(`🃏 ${activePlayer.name} drew a card from the deck.`);
       } else {
-        drawnCard = room.availableDiscardCard || room.discardPile[room.discardPile.length - 1];
-        room.discardPile = room.discardPile.filter(c => c.id !== drawnCard.id);
-        room.availableDiscardCard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
-        room.gameLogs.unshift(`📥 ${activePlayer.name} took the open card [${drawnCard.value} of ${drawnCard.suit}]`);
+        const openCard = room.availableDiscardCard || room.discardPile[room.discardPile.length - 1];
+        if (!openCard) {
+          drawnCard = room.deck.shift()!;
+          room.gameLogs.unshift(`🃏 ${activePlayer.name} wanted the open card but none was available; drew from the deck.`);
+        } else {
+          drawnCard = openCard;
+          room.discardPile = room.discardPile.filter(c => c.id !== drawnCard.id);
+          room.availableDiscardCard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
+          room.gameLogs.unshift(`📥 ${activePlayer.name} took the open card [${drawnCard.value} of ${drawnCard.suit}]`);
+        }
       }
 
       if (recycled) {
@@ -868,9 +874,10 @@ async function startServer() {
         const remainingHand = activePlayer.hand;
         const maxRemainingPoints = remainingHand.length > 0 ? Math.max(...remainingHand.map(c => c.points)) : 0;
         
-        const hasMatchingRank = remainingHand.some(c => c.value === openCard.value);
-        const isOpenLow = openCard.points <= 3;
-        const isBetter = openCard.points < maxRemainingPoints;
+        const openCardAvailable = !!openCard;
+        const hasMatchingRank = openCardAvailable && remainingHand.some(c => c.value === openCard.value);
+        const isOpenLow = openCardAvailable && openCard.points <= 3;
+        const isBetter = openCardAvailable && openCard.points < maxRemainingPoints;
 
         let drawFromDeck = true;
         if ((isOpenLow || hasMatchingRank) && isBetter) {
@@ -878,7 +885,7 @@ async function startServer() {
         }
 
         let drawnCard: Card;
-        if (drawFromDeck) {
+        if (drawFromDeck || !openCard) {
           drawnCard = reFetched.deck.shift()!;
           reFetched.gameLogs.unshift(`🃏 ${activePlayer.name} (AI) drew a card from the deck.`);
         } else {

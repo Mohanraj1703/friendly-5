@@ -460,13 +460,14 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
         return [...prev, card];
       }
 
-      // Otherwise, swap selection to this new card
-      return [card];
+      // Otherwise, do not allow mixing ranks; keep the current selection
+      return prev;
     });
   };
 
   // HUMAN: Discard Selected Cards
   const handleHumanDiscard = () => {
+    if (turnPhase !== 'discard') return;
     if (selectedCards.length === 0 || !isValidDiscard(selectedCards)) return;
 
     playSound('discard');
@@ -489,9 +490,11 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
     // Push to discard pile
     const nextDiscardPile = [...discardPile, ...selectedCards];
     const nextPlayers = players.map((p) => (p.id === activePlayer.id ? { ...p, hand: nextHand } : p));
+    const nextAvailableCard = nextDiscardPile[nextDiscardPile.length - 1] || null;
 
     syncGameState({
       discardPile: nextDiscardPile,
+      availableDiscardCard: nextAvailableCard,
       players: nextPlayers,
       turnPhase: 'draw',
       gameLogs: updatedLogs
@@ -528,9 +531,14 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
       drawnCard = newDeck.shift()!;
       updatedLogs = [`${humanName} drew from the Deck.`, ...updatedLogs];
     } else {
-      drawnCard = availableDiscardCard || finalDiscardPile[0];
-      finalDiscardPile = finalDiscardPile.filter((c) => c.id !== drawnCard.id);
-      updatedLogs = [`${humanName} drew the Open Card: [${drawnCard.value} of ${drawnCard.suit}]`, ...updatedLogs];
+      drawnCard = availableDiscardCard || finalDiscardPile[finalDiscardPile.length - 1];
+      if (!drawnCard) {
+        drawnCard = newDeck.shift()!;
+        updatedLogs = [`${humanName} wanted to take the open card, but none was available; drew from the Deck instead.`, ...updatedLogs];
+      } else {
+        finalDiscardPile = finalDiscardPile.filter((c) => c.id !== drawnCard.id);
+        updatedLogs = [`${humanName} drew the Open Card: [${drawnCard.value} of ${drawnCard.suit}]`, ...updatedLogs];
+      }
     }
 
     playSound('draw');
@@ -700,7 +708,7 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
   const isHumanTurn = lobbyId 
     ? activePlayer?.id === myPlayerId && gamePhase === 'playing'
     : activePlayer?.isHuman && gamePhase === 'playing';
-  const cardToDisplay = (isHumanTurn && turnPhase === 'draw') ? availableDiscardCard : openCard;
+  const cardToDisplay = (isHumanTurn && turnPhase === 'draw') ? (availableDiscardCard || openCard) : openCard;
 
   // Helper for rendering player stats
   const getPositionClasses = (idx: number, total: number) => {
@@ -936,7 +944,7 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
                   <p className="text-[10px] text-slate-400">
                     {turnPhase === 'discard'
                       ? 'You can call if you believe you have the lowest point sum.'
-                      : `You can draw the previous player's card [${availableDiscardCard ? `${availableDiscardCard.value} of ${availableDiscardCard.suit}` : 'None'}] or draw from deck.`}
+                      : `You can draw the previous player's card [${cardToDisplay ? `${cardToDisplay.value} of ${cardToDisplay.suit}` : 'None'}] or draw from deck.`}
                   </p>
                 )}
               </div>
