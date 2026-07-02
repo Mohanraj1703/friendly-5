@@ -259,7 +259,7 @@ export default function App() {
                       className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-950/40"
                     >
                       <Plus className="w-4 h-4" />
-                      Create Private Table
+                      Create Room
                     </button>
                   </form>
 
