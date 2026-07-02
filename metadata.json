@@ -1,0 +1,6 @@
+{
+  "name": "5 Cards Game",
+  "description": "A strategic card game where players discard matching numbers to minimize their hand points and call when they have the lowest score.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
