@@ -203,7 +203,7 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
       firstTurn = (firstTurn + 1) % initialPlayers.length;
     }
 
-    const startMsg = `Round ${isNewGame ? 1 : roundNumber + 1} started. Hands dealt. Open card: ${initialOpenCard.value} of ${initialOpenCard.suit}.`;
+    const startMsg = `Round ${isNewGame ? 1 : roundNumber + 1} started. Hands dealt. Previous discard: ${initialOpenCard.value} of ${initialOpenCard.suit}.`;
     const nextLogs = [startMsg, ...gameLogs.slice(0, 49)];
 
     playSound('deal');
@@ -315,8 +315,8 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
     const speedMs = settings.gameSpeed === 'slow' ? 2000 : settings.gameSpeed === 'medium' ? 1200 : 400;
 
     const timer = setTimeout(() => {
-      // Determine what the open card is
-      const openCard = discardPile[discardPile.length - 1];
+// Determine what the previous discard card is
+    const openCard = availableDiscardCard;
       
       // Calculate active player list points to assist in decisions
       const otherPlayers = players.filter((p) => p.id !== activePlayer.id && !p.eliminated);
@@ -367,13 +367,13 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
             updatedLogs = [`♻️ Deck running low. Recycled the discard pile!`, ...updatedLogs];
           }
 
-          if (decision.drawFromDeck) {
+          if (decision.drawFromDeck || !availableDiscardCard) {
             drawnCard = newDeck.shift()!;
             updatedLogs = [`${activePlayer.name} drew a card from the deck.`, ...updatedLogs];
           } else {
-            drawnCard = availableDiscardCard || finalDiscardPile[0];
+            drawnCard = availableDiscardCard;
             finalDiscardPile = finalDiscardPile.filter((c) => c.id !== drawnCard.id);
-            updatedLogs = [`${activePlayer.name} took the open card [${drawnCard.value} of ${drawnCard.suit}] from the pile.`, ...updatedLogs];
+            updatedLogs = [`${activePlayer.name} took the previous discard [${drawnCard.value} of ${drawnCard.suit}] from the pile.`, ...updatedLogs];
           }
 
           playSound('draw');
@@ -490,11 +490,9 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
     // Push to discard pile
     const nextDiscardPile = [...discardPile, ...selectedCards];
     const nextPlayers = players.map((p) => (p.id === activePlayer.id ? { ...p, hand: nextHand } : p));
-    const nextAvailableCard = nextDiscardPile[nextDiscardPile.length - 1] || null;
 
     syncGameState({
       discardPile: nextDiscardPile,
-      availableDiscardCard: nextAvailableCard,
       players: nextPlayers,
       turnPhase: 'draw',
       gameLogs: updatedLogs
@@ -531,13 +529,14 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
       drawnCard = newDeck.shift()!;
       updatedLogs = [`${humanName} drew from the Deck.`, ...updatedLogs];
     } else {
-      drawnCard = availableDiscardCard || finalDiscardPile[finalDiscardPile.length - 1];
-      if (!drawnCard) {
+      const openCard = availableDiscardCard;
+      if (!openCard) {
         drawnCard = newDeck.shift()!;
-        updatedLogs = [`${humanName} wanted to take the open card, but none was available; drew from the Deck instead.`, ...updatedLogs];
+        updatedLogs = [`${humanName} wanted the previous discard but none was available; drew from the Deck instead.`, ...updatedLogs];
       } else {
+        drawnCard = openCard;
         finalDiscardPile = finalDiscardPile.filter((c) => c.id !== drawnCard.id);
-        updatedLogs = [`${humanName} drew the Open Card: [${drawnCard.value} of ${drawnCard.suit}]`, ...updatedLogs];
+        updatedLogs = [`${humanName} drew the previous discard: [${drawnCard.value} of ${drawnCard.suit}]`, ...updatedLogs];
       }
     }
 
@@ -703,12 +702,11 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
     initGame(true);
   };
 
-  // Open card details
-  const openCard = discardPile[discardPile.length - 1];
+  // Previous discard details (the card available from the previous player's turn)
   const isHumanTurn = lobbyId 
     ? activePlayer?.id === myPlayerId && gamePhase === 'playing'
     : activePlayer?.isHuman && gamePhase === 'playing';
-  const cardToDisplay = (isHumanTurn && turnPhase === 'draw') ? (availableDiscardCard || openCard) : openCard;
+  const cardToDisplay = isHumanTurn && turnPhase === 'draw' ? availableDiscardCard : null;
 
   // Helper for rendering player stats
   const getPositionClasses = (idx: number, total: number) => {
@@ -896,7 +894,7 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
             {/* Discard Pile (Open Card) */}
             <div className="flex flex-col items-center gap-1.5">
               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                Open Card
+                Previous Discard
               </span>
               {cardToDisplay ? (
                 <motion.button
@@ -936,7 +934,7 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
               <div>
                 <p className="text-xs font-semibold text-slate-200">
                   {aiIsThinking ? aiStatusMessage : isHumanTurn ? (
-                    turnPhase === 'discard' ? 'Your Turn: Select cards of same value to Discard' : 'Choose: Draw from Deck or the Open Card'
+                    turnPhase === 'discard' ? 'Your Turn: Select cards of same value to Discard' : 'Choose: Draw from Deck or the Previous Discard'
                   ) : 'Waiting for next turn...'}
                 </p>
                 {/* Small instructions */}
@@ -944,7 +942,7 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
                   <p className="text-[10px] text-slate-400">
                     {turnPhase === 'discard'
                       ? 'You can call if you believe you have the lowest point sum.'
-                      : `You can draw the previous player's card [${cardToDisplay ? `${cardToDisplay.value} of ${cardToDisplay.suit}` : 'None'}] or draw from deck.`}
+                      : `You can draw the previous player's card [${cardToDisplay ? `${cardToDisplay.value} of ${cardToDisplay.suit}` : 'None'}] or draw from the deck.`}
                   </p>
                 )}
               </div>

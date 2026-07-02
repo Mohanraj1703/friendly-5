@@ -465,7 +465,6 @@ async function startServer() {
       // Perform Discard on server state
       activePlayer.hand = activePlayer.hand.filter(c => !discardedCardIds.includes(c.id));
       room.discardPile = [...room.discardPile, ...discardedCards];
-      room.availableDiscardCard = discardedCards[discardedCards.length - 1];
       room.turnPhase = 'draw';
 
       const cardNames = discardedCards.map(c => `${c.value} of ${c.suit}`).join(", ");
@@ -500,17 +499,18 @@ async function startServer() {
         drawnCard = room.deck.shift()!;
         room.gameLogs.unshift(`🃏 ${activePlayer.name} drew a card from the deck.`);
       } else {
-        const openCard = room.availableDiscardCard || room.discardPile[room.discardPile.length - 1];
+        const openCard = room.availableDiscardCard;
         if (!openCard) {
           drawnCard = room.deck.shift()!;
-          room.gameLogs.unshift(`🃏 ${activePlayer.name} wanted the open card but none was available; drew from the deck.`);
+          room.gameLogs.unshift(`🃏 ${activePlayer.name} wanted the previous discard but none was available; drew from the deck.`);
         } else {
           drawnCard = openCard;
           room.discardPile = room.discardPile.filter(c => c.id !== drawnCard.id);
-          room.availableDiscardCard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
-          room.gameLogs.unshift(`📥 ${activePlayer.name} took the open card [${drawnCard.value} of ${drawnCard.suit}]`);
+          room.gameLogs.unshift(`📥 ${activePlayer.name} took the previous discard [${drawnCard.value} of ${drawnCard.suit}]`);
         }
       }
+
+      room.availableDiscardCard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
 
       if (recycled) {
         room.gameLogs.unshift(`♻️ Deck ran low. Recycled the discard pile!`);
@@ -856,7 +856,6 @@ async function startServer() {
       // Perform Discard
       activePlayer.hand = activePlayer.hand.filter(c => !discardCardIds.includes(c.id));
       currentRoom.discardPile = [...currentRoom.discardPile, ...discardCards];
-      currentRoom.availableDiscardCard = discardCards[discardCards.length - 1];
       
       const cardNames = discardCards.map(c => `${c.value} of ${c.suit}`).join(", ");
       currentRoom.gameLogs.unshift(`🎴 ${activePlayer.name} (AI) discarded: [${cardNames}]`);
@@ -869,8 +868,8 @@ async function startServer() {
         const reFetched = rooms.get(room.id);
         if (!reFetched || reFetched.status !== 'playing' || reFetched.paused) return;
 
-        // Decide whether to draw from deck or top open discard card
-        const openCard = reFetched.availableDiscardCard || reFetched.discardPile[reFetched.discardPile.length - 1];
+        // Decide whether to draw from deck or the previous player's available discard
+        const openCard = reFetched.availableDiscardCard;
         const remainingHand = activePlayer.hand;
         const maxRemainingPoints = remainingHand.length > 0 ? Math.max(...remainingHand.map(c => c.points)) : 0;
         

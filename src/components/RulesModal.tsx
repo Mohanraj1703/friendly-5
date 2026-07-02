@@ -49,11 +49,11 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
                 <strong className="text-white">Drop Card(s):</strong> Select and discard <span className="text-amber-400">one card</span>, or <span className="text-amber-400">multiple cards of the exact same number</span> (e.g. discard two 7s, three Jacks, or four Aces). The card suits do not matter for dropping!
               </li>
               <li>
-                <strong className="text-white">Draw a Card:</strong> Take exactly <span className="text-emerald-400">one card</span> to replace what you dropped. You can either take the <strong className="text-white">"Open Card"</strong> (the top card of the discard pile) or draw a face-down card from the <strong className="text-white">Deck</strong>.
+                <strong className="text-white">Draw a Card:</strong> Take exactly <span className="text-emerald-400">one card</span> to replace what you dropped. You can either take the previous player's top discard or draw a face-down card from the <strong className="text-white">Deck</strong>.
               </li>
             </ol>
             <div className="mt-2.5 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400">
-              💡 <span className="text-slate-200 font-medium">Strategy:</span> Discarding multiple matching cards shrinks your hand size! If you discard three cards and draw one, you now only hold 3 cards instead of 5, making it much easier to achieve a low score.
+              💡 <span className="text-slate-200 font-medium">Strategy:</span> Discarding multiple matching cards shrinks your hand size! If you discard three cards and draw one, you now only hold 3 cards instead of 5, making it much easier to achieve a low score. You may not draw back the cards you just discarded; the discard option always refers to the previous player's top discard from the prior turn.
             </div>
           </div>
 
