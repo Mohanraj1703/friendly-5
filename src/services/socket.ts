@@ -28,7 +28,8 @@ export function getSocket(): Socket {
 export function connectSocket(
   onStateUpdate: (state: any) => void,
   onError: (msg: string) => void,
-  onKicked: () => void
+  onKicked: () => void,
+  onGameStarted?: (payload: any) => void
 ) {
   const s = getSocket();
   
@@ -40,11 +41,13 @@ export function connectSocket(
   s.off("gameStateUpdate", onStateUpdate);
   s.off("errorMsg", onError);
   s.off("kicked", onKicked);
+  if (onGameStarted) s.off("gameStarted", onGameStarted);
 
   // Register listeners
   s.on("gameStateUpdate", onStateUpdate);
   s.on("errorMsg", onError);
   s.on("kicked", onKicked);
+  if (onGameStarted) s.on("gameStarted", onGameStarted);
 
   return s;
 }

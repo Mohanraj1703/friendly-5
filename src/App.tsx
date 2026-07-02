@@ -26,6 +26,7 @@ export default function App() {
   const [isRulesOpen, setIsRulesOpen] = useState<boolean>(false);
   const [lobbyId, setLobbyId] = useState<string | null>(null);
   const [initialLobbyState, setInitialLobbyState] = useState<any | null>(null);
+  const [initialGameState, setInitialGameState] = useState<any | null>(null);
   const [joinCodeInput, setJoinCodeInput] = useState<string>('');
   const [onlineScoreLimit, setOnlineScoreLimit] = useState<number>(100);
   const [onlineMaxPlayers, setOnlineMaxPlayers] = useState<number>(6);
@@ -161,11 +162,13 @@ export default function App() {
   const handleExitGame = () => {
     setLobbyId(null);
     setInitialLobbyState(null);
+    setInitialGameState(null);
     setGameState('settings');
   };
 
-  const handleGameStartedMultiplayer = (startedLobbyId: string) => {
+  const handleGameStartedMultiplayer = (startedLobbyId: string, roomState: any) => {
     setLobbyId(startedLobbyId);
+    setInitialGameState(roomState);
     setGameState('playing');
   };
 
@@ -403,6 +406,7 @@ export default function App() {
             humanName={playerName}
             onExit={handleExitGame}
             lobbyId={lobbyId || undefined}
+            initialGameState={initialGameState}
           />
         </div>
       )}

@@ -415,6 +415,16 @@ async function startServer() {
 
       // Start the Round
       startRound(room);
+      console.log(`Game started in room ${roomId} with ${room.players.length} players.`);
+
+      // Notify all clients that the game has started and send the initial state immediately
+      room.players.forEach((p) => {
+        if (p.socketId) {
+          console.log(`Emitting gameStarted to player ${p.id} in room ${roomId}`);
+          io.to(p.socketId).emit("gameStarted", { roomId: room.id, roomState: sanitizeRoomForPlayer(room, p.id) });
+        }
+      });
+
       broadcastRoomUpdate(room, io);
     });
 

@@ -29,7 +29,7 @@ interface MultiplayerLobbyProps {
   playerName: string;
   initialLobbyState?: any;
   onExit: () => void;
-  onGameStarted: (lobbyId: string) => void;
+  onGameStarted: (lobbyId: string, roomState: any) => void;
 }
 
 export default function MultiplayerLobby({ 
@@ -42,6 +42,7 @@ export default function MultiplayerLobby({
   const [lobby, setLobby] = useState<any | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [chatInput, setChatInput] = useState<string>('');
+  const [hasStarted, setHasStarted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   
   const myPlayerId = getOrCreatePlayerId();
@@ -52,8 +53,17 @@ export default function MultiplayerLobby({
       setLobby(roomState);
       
       // If the game status transitions to playing, trigger game start callback
-      if (roomState.status === 'playing') {
-        onGameStarted(lobbyId);
+      if (roomState.status === 'playing' && !hasStarted) {
+        setHasStarted(true);
+        onGameStarted(lobbyId, roomState);
+      }
+    };
+
+    const handleGameStarted = (payload: any) => {
+      if (!hasStarted) {
+        setHasStarted(true);
+        setLobby(payload.roomState || payload);
+        onGameStarted(lobbyId, payload.roomState || payload);
       }
     };
 
@@ -67,7 +77,7 @@ export default function MultiplayerLobby({
     };
 
     // Establishes/reconnects socket & registers listeners
-    const s = connectSocket(handleStateUpdate, handleError, handleKicked);
+    const s = connectSocket(handleStateUpdate, handleError, handleKicked, handleGameStarted);
 
     if (initialLobbyState) {
       setLobby(initialLobbyState);
@@ -76,10 +86,11 @@ export default function MultiplayerLobby({
     return () => {
       // Do not close socket entirely, just remove specific lobby handlers
       s.off("gameStateUpdate", handleStateUpdate);
+      s.off("gameStarted", handleGameStarted);
       s.off("errorMsg", handleError);
       s.off("kicked", handleKicked);
     };
-  }, [lobbyId, playerName, myPlayerId, onExit, onGameStarted]);
+  }, [lobbyId, playerName, myPlayerId, onExit, onGameStarted, hasStarted]);
 
   // Scroll chat to bottom
   useEffect(() => {

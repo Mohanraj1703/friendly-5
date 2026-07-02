@@ -23,9 +23,10 @@ interface GameBoardProps {
   humanName: string;
   onExit: () => void;
   lobbyId?: string;
+  initialGameState?: any;
 }
 
-export default function GameBoard({ settings, humanName, onExit, lobbyId }: GameBoardProps) {
+export default function GameBoard({ settings, humanName, onExit, lobbyId, initialGameState }: GameBoardProps) {
   // Sound toggle
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
@@ -228,10 +229,31 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId }: Game
   };
 
   useEffect(() => {
-    if (!lobbyId) {
+    if (lobbyId) {
+      if (initialGameState && initialGameState.players?.length > 0) {
+        console.log('GameBoard initializing from initialGameState', {
+          roomId: lobbyId,
+          status: initialGameState.status,
+          playerCount: initialGameState.players.length,
+        });
+
+        setPlayers(initialGameState.players || []);
+        setDeck(Array(initialGameState.deckCount || 0).fill({ id: 'back', suit: 'joker', value: 'back', points: 0 }));
+        setDiscardPile(initialGameState.discardPile || []);
+        setAvailableDiscardCard(initialGameState.availableDiscardCard || null);
+        setCurrentTurn(initialGameState.currentTurn ?? 0);
+        setTurnPhase(initialGameState.turnPhase || 'discard');
+        setRoundNumber(initialGameState.roundNumber ?? 1);
+        setCallerId(initialGameState.callerId || '');
+        setIsCallSuccessful(initialGameState.isCallSuccessful ?? false);
+        setGameLogs(initialGameState.gameLogs || []);
+        setRoundLogs(initialGameState.roundLogs || []);
+        setGamePhase(initialGameState.status === 'playing' ? 'playing' : 'setup');
+      }
+    } else {
       initGame(true);
     }
-  }, [settings, humanName, lobbyId]);
+  }, [settings, humanName, lobbyId, initialGameState]);
 
   // Socket.IO subscription for real-time multiplayer updates
   useEffect(() => {
