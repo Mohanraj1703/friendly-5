@@ -93,7 +93,7 @@ export interface AIDecision {
 
 export function makeAIDecision(
   aiHand: Card[],
-  openCard: Card,
+  openCard: Card | null,
   otherPlayersMinKnownPoints: number, // AI might guess or track, let's keep it simple
   scoreLimit: number,
   aiScore: number
@@ -148,20 +148,17 @@ export function makeAIDecision(
   const discardCards = bestGroup;
 
   // Decide whether to draw from the deck or from the open card.
-  // AI prefers to draw the open card if:
-  // 1. The open card is low value (<= 3 points or a Joker).
-  // 2. The open card matches another card in the AI's hand (helps form a pair for future turns).
-  // 3. AND the open card is lower than the highest card in the AI's current hand (excluding the ones being discarded).
-  
+  // AI prefers to draw the open card if it is available and useful.
   const remainingHand = aiHand.filter(c => !discardCards.some(dc => dc.id === c.id));
   const maxRemainingPoints = remainingHand.length > 0 ? Math.max(...remainingHand.map(c => c.points)) : 0;
-  
-  const hasMatchingRankInRemaining = remainingHand.some(c => c.value === openCard.value);
-  const isOpenCardVeryLow = openCard.points <= 3;
-  const isBetterThanMaxRemaining = openCard.points < maxRemainingPoints;
+
+  const hasOpenCard = !!openCard;
+  const hasMatchingRankInRemaining = hasOpenCard && remainingHand.some(c => c.value === openCard!.value);
+  const isOpenCardVeryLow = hasOpenCard && openCard!.points <= 3;
+  const isBetterThanMaxRemaining = hasOpenCard && openCard!.points < maxRemainingPoints;
 
   let drawFromDeck = true;
-  if ((isOpenCardVeryLow || hasMatchingRankInRemaining) && isBetterThanMaxRemaining) {
+  if (hasOpenCard && (isOpenCardVeryLow || hasMatchingRankInRemaining) && isBetterThanMaxRemaining) {
     drawFromDeck = false; // Take open card
   }
 

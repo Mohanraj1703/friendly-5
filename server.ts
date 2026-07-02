@@ -462,13 +462,17 @@ async function startServer() {
       // Verify the discard is valid
       if (!isValidDiscard(discardedCards)) return;
 
-      // Perform Discard on server state
+        // Perform Discard on server state
       activePlayer.hand = activePlayer.hand.filter(c => !discardedCardIds.includes(c.id));
       room.discardPile = [...room.discardPile, ...discardedCards];
+      room.availableDiscardCard = room.discardPile[room.discardPile.length - 1] || null;
+      room.currentTurn = getNextTurnPlayerIndex(room.players, room.currentTurn);
       room.turnPhase = 'draw';
 
       const cardNames = discardedCards.map(c => `${c.value} of ${c.suit}`).join(", ");
       room.gameLogs.unshift(`🎴 ${activePlayer.name} discarded: [${cardNames}]`);
+      room.gameLogs.unshift(`🟢 Discard pile updated: ${cardNames}`);
+      room.gameLogs.unshift(`➡️ Turn changed to ${room.players[room.currentTurn].name}.`);
 
       broadcastRoomUpdate(room, io);
     });
@@ -506,11 +510,10 @@ async function startServer() {
         } else {
           drawnCard = openCard;
           room.discardPile = room.discardPile.filter(c => c.id !== drawnCard.id);
+          room.availableDiscardCard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
           room.gameLogs.unshift(`📥 ${activePlayer.name} took the previous discard [${drawnCard.value} of ${drawnCard.suit}]`);
         }
       }
-
-      room.availableDiscardCard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
 
       if (recycled) {
         room.gameLogs.unshift(`♻️ Deck ran low. Recycled the discard pile!`);
@@ -518,10 +521,8 @@ async function startServer() {
 
       // Add to player's hand
       activePlayer.hand.push(drawnCard);
-
-      // Advance Turn
-      room.currentTurn = getNextTurnPlayerIndex(room.players, room.currentTurn);
       room.turnPhase = 'discard';
+      room.gameLogs.unshift(`➡️ ${activePlayer.name} may now discard one or more cards.`);
 
       broadcastRoomUpdate(room, io);
 
@@ -779,7 +780,7 @@ async function startServer() {
     room.deck = freshDeck;
     room.discardPile = [initialOpenCard];
     room.availableDiscardCard = initialOpenCard;
-    room.turnPhase = 'discard';
+    room.turnPhase = 'draw';
     room.callerId = null;
     room.isCallSuccessful = false;
 
@@ -791,7 +792,8 @@ async function startServer() {
     }
 
     room.currentTurn = startIdx;
-    room.gameLogs.unshift(`🏁 Round ${room.roundNumber} started! Hands dealt. Open: [${initialOpenCard.value} of ${initialOpenCard.suit}]`);
+    room.gameLogs.unshift(`🏁 Round ${room.roundNumber} started! Opening card revealed: [${initialOpenCard.value} of ${initialOpenCard.suit}]`);
+    room.gameLogs.unshift(`➡️ Turn begins for ${room.players[room.currentTurn].name}. Draw from the deck or take the opening card.`);
 
     // If initial player is a bot, trigger their action
     setTimeout(() => {

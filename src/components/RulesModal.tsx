@@ -49,7 +49,7 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
                 <strong className="text-white">Drop Card(s):</strong> Select and discard <span className="text-amber-400">one card</span>, or <span className="text-amber-400">multiple cards of the exact same number</span> (e.g. discard two 7s, three Jacks, or four Aces). The card suits do not matter for dropping!
               </li>
               <li>
-                <strong className="text-white">Draw a Card:</strong> Take exactly <span className="text-emerald-400">one card</span> to replace what you dropped. You can either take the previous player's top discard or draw a face-down card from the <strong className="text-white">Deck</strong>.
+                <strong className="text-white">Draw a Card:</strong> On your turn you draw first. If there is a discard from the previous player, you may take that top discard, or you may draw a face-down card from the <strong className="text-white">Deck</strong>. After drawing, discard one or more cards of the same rank.
               </li>
             </ol>
             <div className="mt-2.5 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400">

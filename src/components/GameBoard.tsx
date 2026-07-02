@@ -203,8 +203,8 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
       firstTurn = (firstTurn + 1) % initialPlayers.length;
     }
 
-    const startMsg = `Round ${isNewGame ? 1 : roundNumber + 1} started. Hands dealt. Previous discard: ${initialOpenCard.value} of ${initialOpenCard.suit}.`;
-    const nextLogs = [startMsg, ...gameLogs.slice(0, 49)];
+    const startMsg = `Round ${isNewGame ? 1 : roundNumber + 1} started. Hands dealt. Opening card: ${initialOpenCard.value} of ${initialOpenCard.suit}.`;
+    const nextLogs = [startMsg, `➡️ ${initialPlayers[firstTurn].name} may draw the opening card or draw from the deck.`, ...gameLogs.slice(0, 49)];
 
     playSound('deal');
 
@@ -214,7 +214,7 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
       discardPile: [initialOpenCard],
       availableDiscardCard: initialOpenCard,
       currentTurn: firstTurn,
-      turnPhase: 'discard',
+      turnPhase: 'draw',
       gamePhase: 'playing',
       roundNumber: nextRoundNum,
       callerId: '',
@@ -315,95 +315,108 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
     const speedMs = settings.gameSpeed === 'slow' ? 2000 : settings.gameSpeed === 'medium' ? 1200 : 400;
 
     const timer = setTimeout(() => {
-// Determine what the previous discard card is
-    const openCard = availableDiscardCard;
-      
-      // Calculate active player list points to assist in decisions
+      const openCard = availableDiscardCard;
       const otherPlayers = players.filter((p) => p.id !== activePlayer.id && !p.eliminated);
       const minOtherScore = Math.min(...otherPlayers.map((p) => p.score));
 
-      // Make AI Decision
-      const decision = makeAIDecision(
-        activePlayer.hand,
-        openCard,
-        minOtherScore,
-        settings.scoreLimit,
-        activePlayer.score
-      );
-
-      if (decision.shouldCall) {
-        // AI CALLS!
-        handleCall(activePlayer.id);
-      } else if (decision.discardCards && decision.discardCards.length > 0) {
-        // AI Discards
-        const discardCount = decision.discardCards.length;
-        const discardedNames = decision.discardCards.map((c) => `${c.value} of ${c.suit}`).join(', ');
-        
-        playSound('discard');
-        const logMsg1 = `${activePlayer.name} discarded ${discardCount} card(s): [${discardedNames}]`;
-        let updatedLogs = [logMsg1, ...gameLogs.slice(0, 48)];
-
-        // Perform Discard
-        const nextHand = activePlayer.hand.filter(
-          (hCard) => !decision.discardCards!.some((dCard) => dCard.id === hCard.id)
+      // Decide bot action based on the current turn phase
+      if (turnPhase === 'draw') {
+        const decision = makeAIDecision(
+          activePlayer.hand,
+          openCard,
+          minOtherScore,
+          settings.scoreLimit,
+          activePlayer.score
         );
-        
-        // Push discarded cards to discard pile. The last one will be on top.
-        const nextDiscardPile = [...discardPile, ...decision.discardCards];
 
-        setAiStatusMessage(`${activePlayer.name} is drawing...`);
-
-        // Wait another bit to animate the Draw phase
-        setTimeout(() => {
-          let drawnCard: Card;
-          let newDeck = [...deck];
-          let finalDiscardPile = [...nextDiscardPile];
-
-          // If deck is running low, recycle discard pile (except top card)
-          if (newDeck.length <= 1) {
-            const topCard = finalDiscardPile.pop()!;
-            newDeck = shuffleDeck([...newDeck, ...finalDiscardDiscardCycle(finalDiscardPile)]);
-            finalDiscardPile = [topCard];
-            updatedLogs = [`♻️ Deck running low. Recycled the discard pile!`, ...updatedLogs];
-          }
-
-          if (decision.drawFromDeck || !availableDiscardCard) {
-            drawnCard = newDeck.shift()!;
-            updatedLogs = [`${activePlayer.name} drew a card from the deck.`, ...updatedLogs];
-          } else {
-            drawnCard = availableDiscardCard;
-            finalDiscardPile = finalDiscardPile.filter((c) => c.id !== drawnCard.id);
-            updatedLogs = [`${activePlayer.name} took the previous discard [${drawnCard.value} of ${drawnCard.suit}] from the pile.`, ...updatedLogs];
-          }
-
-          playSound('draw');
-
-          // Put card in AI hand
-          const finalHand = [...nextHand, drawnCard];
-          const nextPlayers = players.map((p) => (p.id === activePlayer.id ? { ...p, hand: finalHand } : p));
-          const nextIdx = getNextTurnPlayerIndex(nextPlayers, currentTurn);
-
-          syncGameState({
-            deck: newDeck,
-            discardPile: finalDiscardPile,
-            availableDiscardCard: finalDiscardPile.length > 0 ? finalDiscardPile[finalDiscardPile.length - 1] : null,
-            players: nextPlayers,
-            currentTurn: nextIdx,
-            turnPhase: 'discard',
-            gameLogs: updatedLogs.slice(0, 50)
-          });
-
+        if (decision.shouldCall) {
+          handleCall(activePlayer.id);
           setAiIsThinking(false);
-        }, speedMs * 0.8);
-      } else {
-        // Fallback safety to avoid softlock
-        setAiIsThinking(false);
-        const nextIdx = getNextTurnPlayerIndex(players, currentTurn);
+          return;
+        }
+
+        let drawnCard: Card;
+        let newDeck = [...deck];
+        let finalDiscardPile = [...discardPile];
+        let updatedLogs = [`${activePlayer.name} is drawing...`, ...gameLogs.slice(0, 48)];
+
+        if (newDeck.length <= 1) {
+          const topCard = finalDiscardPile.pop()!;
+          newDeck = shuffleDeck([...newDeck, ...finalDiscardDiscardCycle(finalDiscardPile)]);
+          finalDiscardPile = [topCard];
+          updatedLogs = [`♻️ Deck running low. Recycled the discard pile!`, ...updatedLogs];
+        }
+
+        if (decision.drawFromDeck || !openCard) {
+          drawnCard = newDeck.shift()!;
+          updatedLogs = [`🃏 ${activePlayer.name} drew a card from the deck.`, ...updatedLogs];
+        } else {
+          drawnCard = openCard;
+          finalDiscardPile = finalDiscardPile.filter((c) => c.id !== drawnCard.id);
+          updatedLogs = [`📥 ${activePlayer.name} took the previous discard [${drawnCard.value} of ${drawnCard.suit}]`, ...updatedLogs];
+        }
+
+        const nextHand = [...activePlayer.hand, drawnCard];
+        const nextPlayers = players.map((p) => (p.id === activePlayer.id ? { ...p, hand: nextHand } : p));
+
         syncGameState({
-          currentTurn: nextIdx,
-          turnPhase: 'discard'
+          deck: newDeck,
+          discardPile: finalDiscardPile,
+          availableDiscardCard: finalDiscardPile.length > 0 ? finalDiscardPile[finalDiscardPile.length - 1] : null,
+          players: nextPlayers,
+          turnPhase: 'discard',
+          gameLogs: updatedLogs.slice(0, 50)
         });
+
+        setAiIsThinking(false);
+        return;
       }
+
+      if (turnPhase === 'discard') {
+        const discardGroups: Record<string, Card[]> = {};
+        activePlayer.hand.forEach((card) => {
+          if (!discardGroups[card.value]) discardGroups[card.value] = [];
+          discardGroups[card.value].push(card);
+        });
+
+        let bestGroup: Card[] = [];
+        let maxPoints = -1;
+        Object.values(discardGroups).forEach((group) => {
+          const points = calculateHandPoints(group);
+          if (group.length > bestGroup.length || (group.length === bestGroup.length && points > maxPoints)) {
+            bestGroup = group;
+            maxPoints = points;
+          }
+        });
+
+        if (bestGroup.length === 0) {
+          setAiIsThinking(false);
+          return;
+        }
+
+        const discardedNames = bestGroup.map((c) => `${c.value} of ${c.suit}`).join(', ');
+        let updatedLogs = [`🎴 ${activePlayer.name} discarded: [${discardedNames}]`, ...gameLogs.slice(0, 48)];
+
+        const nextHand = activePlayer.hand.filter((c) => !bestGroup.some((d) => d.id === c.id));
+        const nextDiscardPile = [...discardPile, ...bestGroup];
+        const nextIdx = getNextTurnPlayerIndex(players, currentTurn);
+        const nextAvailableCard = nextDiscardPile.length > 0 ? nextDiscardPile[nextDiscardPile.length - 1] : null;
+
+        syncGameState({
+          deck,
+          discardPile: nextDiscardPile,
+          availableDiscardCard: nextAvailableCard,
+          players: players.map((p) => (p.id === activePlayer.id ? { ...p, hand: nextHand } : p)),
+          currentTurn: nextIdx,
+          turnPhase: 'draw',
+          gameLogs: updatedLogs.slice(0, 50)
+        });
+
+        setAiIsThinking(false);
+        return;
+      }
+
+      setAiIsThinking(false);
     }, speedMs);
 
     return () => clearTimeout(timer);
@@ -487,13 +500,17 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
       (hCard) => !selectedCards.some((sCard) => sCard.id === hCard.id)
     );
 
-    // Push to discard pile
+    // Push to discard pile and advance to the next player
     const nextDiscardPile = [...discardPile, ...selectedCards];
     const nextPlayers = players.map((p) => (p.id === activePlayer.id ? { ...p, hand: nextHand } : p));
+    const nextIdx = getNextTurnPlayerIndex(players, currentTurn);
+    const nextAvailableCard = nextDiscardPile.length > 0 ? nextDiscardPile[nextDiscardPile.length - 1] : null;
 
     syncGameState({
-      discardPile: nextDiscardPile,
       players: nextPlayers,
+      discardPile: nextDiscardPile,
+      availableDiscardCard: nextAvailableCard,
+      currentTurn: nextIdx,
       turnPhase: 'draw',
       gameLogs: updatedLogs
     });
@@ -527,31 +544,27 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
 
     if (fromDeck) {
       drawnCard = newDeck.shift()!;
-      updatedLogs = [`${humanName} drew from the Deck.`, ...updatedLogs];
+      updatedLogs = [`${humanName} drew from the deck.`, ...updatedLogs];
     } else {
       const openCard = availableDiscardCard;
       if (!openCard) {
         drawnCard = newDeck.shift()!;
-        updatedLogs = [`${humanName} wanted the previous discard but none was available; drew from the Deck instead.`, ...updatedLogs];
+        updatedLogs = [`${humanName} wanted the previous discard but none was available; drew from the deck instead.`, ...updatedLogs];
       } else {
         drawnCard = openCard;
         finalDiscardPile = finalDiscardPile.filter((c) => c.id !== drawnCard.id);
-        updatedLogs = [`${humanName} drew the previous discard: [${drawnCard.value} of ${drawnCard.suit}]`, ...updatedLogs];
+        updatedLogs = [`${humanName} took the previous discard: [${drawnCard.value} of ${drawnCard.suit}]`, ...updatedLogs];
       }
     }
 
-    playSound('draw');
-
     const nextHand = [...activePlayer.hand, drawnCard];
     const nextPlayers = players.map((p) => (p.id === activePlayer.id ? { ...p, hand: nextHand } : p));
-    const nextIdx = getNextTurnPlayerIndex(nextPlayers, currentTurn);
 
     syncGameState({
       deck: newDeck,
       discardPile: finalDiscardPile,
       availableDiscardCard: finalDiscardPile.length > 0 ? finalDiscardPile[finalDiscardPile.length - 1] : null,
       players: nextPlayers,
-      currentTurn: nextIdx,
       turnPhase: 'discard',
       gameLogs: updatedLogs.slice(0, 50)
     });
