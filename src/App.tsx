@@ -28,6 +28,10 @@ export default function App() {
   const [joinCodeInput, setJoinCodeInput] = useState<string>('');
   const [onlineScoreLimit, setOnlineScoreLimit] = useState<number>(100);
   const [onlineMaxPlayers, setOnlineMaxPlayers] = useState<number>(6);
+  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isCreatingRoom, setIsCreatingRoom] = useState<boolean>(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState<boolean>(false);
 
   // Save player name to local storage whenever changed
   useEffect(() => {
@@ -41,19 +45,34 @@ export default function App() {
     const onRoomCreated = ({ roomId }: { roomId: string }) => {
       setLobbyId(roomId);
       setGameState('lobby');
+      setStatusMessage('Room created. Share this room code with your friends to join.');
+      setErrorMessage('');
+      setIsCreatingRoom(false);
     };
 
     const onRoomJoined = ({ roomId }: { roomId: string }) => {
       setLobbyId(roomId);
       setGameState('lobby');
+      setStatusMessage('Joined room successfully.');
+      setErrorMessage('');
+      setIsJoiningRoom(false);
+    };
+
+    const onSocketError = (message: string) => {
+      setErrorMessage(message);
+      setStatusMessage('');
+      setIsCreatingRoom(false);
+      setIsJoiningRoom(false);
     };
 
     socket.on("roomCreated", onRoomCreated);
     socket.on("roomJoined", onRoomJoined);
+    socket.on("errorMsg", onSocketError);
 
     return () => {
       socket.off("roomCreated", onRoomCreated);
       socket.off("roomJoined", onRoomJoined);
+      socket.off("errorMsg", onSocketError);
     };
   }, []);
 
@@ -67,7 +86,7 @@ export default function App() {
   const handleCreateOnlineRoom = (e: React.FormEvent) => {
     e.preventDefault();
     if (!playerName.trim()) {
-      alert("Please enter your name first!");
+      setErrorMessage("Please enter your name first!");
       return;
     }
     
@@ -85,19 +104,26 @@ export default function App() {
       maxPlayers = 20;
     }
 
+    setErrorMessage('');
+    setStatusMessage('Creating room...');
+    setIsCreatingRoom(true);
     createRoom(playerName.trim(), scoreLimit, maxPlayers);
   };
 
   const handleJoinOnlineRoom = (e: React.FormEvent) => {
     e.preventDefault();
     if (!playerName.trim()) {
-      alert("Please enter your name first!");
+      setErrorMessage("Please enter your name first!");
       return;
     }
-    if (!joinCodeInput.trim() || joinCodeInput.trim().length !== 5) {
-      alert("Please enter a valid 5-letter Room Code!");
+    if (!joinCodeInput.trim() || joinCodeInput.trim().length < 6 || joinCodeInput.trim().length > 8) {
+      setErrorMessage("Please enter a valid room code (6-8 characters). ");
       return;
     }
+
+    setErrorMessage('');
+    setStatusMessage('Joining room...');
+    setIsJoiningRoom(true);
     joinRoom(joinCodeInput.trim().toUpperCase(), playerName.trim());
   };
 
@@ -178,7 +204,7 @@ export default function App() {
                   </div>
                   <h1 className="text-3xl font-extrabold text-white tracking-tight">Online Multiplayer</h1>
                   <p className="text-slate-400 text-xs mt-2 max-w-sm">
-                    Host a private table for up to 8 players, or join a room with a 5-letter code to play in real time!
+                    Host a room for up to 8 players, or join a room with a 6-8 character code to play in real time!
                   </p>
                 </div>
 
@@ -254,13 +280,22 @@ export default function App() {
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-950/40"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Create Room
-                    </button>
+                    <div className="space-y-3">
+                      {statusMessage && (
+                        <div className="text-sm text-emerald-300 font-medium">{statusMessage}</div>
+                      )}
+                      {errorMessage && (
+                        <div className="text-sm text-rose-400 font-medium">{errorMessage}</div>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={isCreatingRoom}
+                        className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold py-3.5 px-6 rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-950/40"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {isCreatingRoom ? 'Creating Room...' : 'Create Room'}
+                      </button>
+                    </div>
                   </form>
 
                   <div className="relative flex py-2 items-center">
@@ -278,16 +313,17 @@ export default function App() {
                       <input
                         type="text"
                         value={joinCodeInput}
-                        onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase().slice(0, 5))}
-                        placeholder="ENTER 5-LETTER CODE"
+                        onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+                        placeholder="ENTER ROOM CODE"
                         className="flex-1 bg-slate-950/60 border border-slate-800 focus:border-emerald-500 text-white rounded-xl px-4 py-3 text-xs tracking-widest font-mono text-center focus:outline-none uppercase"
                       />
                       <button
                         type="submit"
-                        className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold px-6 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-emerald-950/25"
+                        disabled={isJoiningRoom}
+                        className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold px-6 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-emerald-950/25"
                       >
                         <LogIn className="w-4 h-4" />
-                        Join Room
+                        {isJoiningRoom ? 'Joining...' : 'Join Room'}
                       </button>
                     </div>
                   </form>

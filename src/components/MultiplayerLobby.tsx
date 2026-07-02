@@ -155,18 +155,24 @@ export default function MultiplayerLobby({
             </div>
 
             {/* Code Copying component */}
-            <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-2.5 flex items-center justify-between gap-4 max-w-xs shadow-inner">
-              <div className="pl-2">
+            <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3 max-w-xs shadow-inner">
+              <div>
                 <p className="text-[9px] uppercase tracking-wider font-mono text-slate-500 font-bold">Room Code</p>
-                <p className="text-xl font-black tracking-widest text-emerald-400 font-mono select-all leading-none mt-1">{lobbyId}</p>
+                <p className="text-2xl font-black tracking-widest text-emerald-400 font-mono select-all leading-none mt-1">{lobbyId}</p>
               </div>
-              <button
-                onClick={handleCopyCode}
-                className="p-3 bg-slate-900 hover:bg-slate-850 active:bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer shadow flex items-center justify-center"
-                title="Copy Room Code"
-              >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              </button>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  onClick={handleCopyCode}
+                  className="flex-1 py-3 bg-slate-900 hover:bg-slate-850 active:bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer shadow flex items-center justify-center gap-2"
+                  title="Copy Room Code"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copied' : 'Copy Code'}
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 font-mono leading-5">
+                Share this room code with your friends to join.
+              </p>
             </div>
           </div>
 

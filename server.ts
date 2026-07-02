@@ -54,14 +54,14 @@ interface GameRoom {
 
 const rooms = new Map<string, GameRoom>();
 
-// Generate a random 5-letter uppercase code
+// Generate a random 6-8 character uppercase alphanumeric code
 function generateRoomCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const length = 6 + Math.floor(Math.random() * 3); // 6, 7, or 8
   let code = '';
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < length; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  // Ensure unique
   if (rooms.has(code)) return generateRoomCode();
   return code;
 }

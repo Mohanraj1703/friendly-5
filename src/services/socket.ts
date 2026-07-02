@@ -3,14 +3,20 @@ import { getOrCreatePlayerId } from "../lib/multiplayer";
 
 let socket: Socket | null = null;
 
-// Get the socket server URL. 
+// Get the socket server URL.
 // If VITE_SOCKET_URL is specified, use it. Otherwise, connect to the current host (same origin).
 const SOCKET_URL = (import.meta as any).env?.VITE_SOCKET_URL || window.location.origin;
+
+function ensureSocketConnected(s: Socket) {
+  if (!s.connected) {
+    s.connect();
+  }
+}
 
 export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
-      autoConnect: false,
+      autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
@@ -63,12 +69,14 @@ export function disconnectSocket() {
 // Emits API matching user spec
 export function createRoom(playerName: string, scoreLimit: number, maxPlayers: number) {
   const s = getSocket();
+  ensureSocketConnected(s);
   const playerId = getOrCreatePlayerId();
   s.emit("createRoom", { playerName, scoreLimit, maxPlayers, playerId });
 }
 
 export function joinRoom(roomId: string, playerName: string) {
   const s = getSocket();
+  ensureSocketConnected(s);
   const playerId = getOrCreatePlayerId();
   s.emit("joinRoom", { roomId: roomId.toUpperCase().trim(), playerName, playerId });
 }
