@@ -445,23 +445,23 @@ export default function GameBoard({ settings, humanName, onExit, lobbyId, initia
     if (turnPhase !== 'discard') return;
 
     setSelectedCards((prev) => {
-      // If already selected, remove
+      // If already selected, remove it
       if (prev.some((c) => c.id === card.id)) {
         return prev.filter((c) => c.id !== card.id);
       }
 
-      // If nothing selected yet, select freely
+      // If nothing selected yet, select this card
       if (prev.length === 0) {
         return [card];
       }
 
-      // If card has the same rank/value as already selected, allow addition
+      // If this card matches the currently selected rank, add it
       if (card.value === prev[0].value) {
         return [...prev, card];
       }
 
-      // Otherwise, do not allow mixing ranks; keep the current selection
-      return prev;
+      // Otherwise switch selection to the newly clicked card
+      return [card];
     });
   };
 
